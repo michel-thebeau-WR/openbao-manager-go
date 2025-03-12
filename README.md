@@ -1,14 +1,14 @@
 # openbao-manager-go
-Golang code for the Openbao Manager
+Golang code for the OpenBao Manager
 
-Manager runs as a Kubernetes pod or host service and performs the following actions:
-* Discover Openbao servers
-* Initialize the Openbao cluster, raft backend
+Manager is a Kubernetes pod or host service that performs the following actions:
+* Discover OpenBao servers
+* Initialize the OpenBao cluster, raft backend
 * Store and retrieve token and shards
-* Add/remove Openbao servers from the raft
-* Unseal Openbao servers
+* Add/remove OpenBao servers from the raft
+* Unseal OpenBao servers
 
-[Openbao](https://openbao.org/)] OpenBao is an open source, community-driven fork of Vault managed by the Linux Foundation.  Openbao Manager is a [Starlingx](https://www.starlingx.io/) project.
+[OpenBao](https://openbao.org/) is an open source, community-driven fork of Vault managed by the Linux Foundation.  OpenBao Manager is a [Starlingx](https://www.starlingx.io/) project.
 
 ## Project Status
 _Concept and early development_
