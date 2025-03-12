@@ -5,7 +5,7 @@
 FROM debian:stable-slim
 
 ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang \
-    wget procps less file vim"
+    wget procps less file vim build-essential sudo"
 
 USER root
 
@@ -22,7 +22,8 @@ RUN mkdir -p /tmp && \
 # create a non-root user/group for openbao-manager
 RUN groupadd --gid 1000 manager \
     && adduser --uid 1000 --gid 1000 manager \
-        --home /workdir --shell /bin/bash
+        --home /workdir --shell /bin/bash \
+    && echo "manager  ALL=(ALL:ALL) NOPASSWD: ALL" > /etc/sudoers.d/manager
 
 USER manager
 
