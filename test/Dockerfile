@@ -1,7 +1,7 @@
 # Test image for go openbao monitor
 # Debian image with openbao and go openbao monitor installed
 # Example command to build: docker build -f test/Dockerfile .
-
+questions about sign-offs
 FROM debian:stable-slim
 
 ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang wget"
