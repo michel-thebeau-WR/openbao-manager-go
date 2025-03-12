@@ -4,7 +4,8 @@
 
 FROM debian:stable-slim
 
-ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang wget"
+ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang \
+    wget procps less file vim"
 
 USER root
 
