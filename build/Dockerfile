@@ -6,9 +6,15 @@ FROM golang:1.24.1-bookworm AS build
 
 WORKDIR /src
 
-COPY . .
+# Copy submodules
+COPY ./config ./config
+
+# Copy main module
+COPY go.mod go.sum main.go ./
 
 RUN go mod download
+
+RUN go mod tidy
 
 RUN go build -o /out/baomon .
 
