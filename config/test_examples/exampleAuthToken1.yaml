@@ -1,0 +1,7 @@
+Tokens:
+  exampleToken:
+    duration: 0
+    key: s.ACurrectRootTokenWithCorrectFormat
+  anotherExampleToken:
+    duration: 1000
+    key: b.AnotherKeyThatIsNotARootToken
