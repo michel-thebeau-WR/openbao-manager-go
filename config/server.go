@@ -1,6 +1,7 @@
 package baoConfig
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -19,6 +20,11 @@ type Token struct {
 	Key      string `yaml:"key"`
 }
 
+type KeyShards struct {
+	Key       string `yaml:"key"`
+	KeyBase64 string `yaml:"key_base64"`
+}
+
 type MonitorConfig struct {
 	// A map value listing all DNS names
 	// Key: Domain name
@@ -29,6 +35,11 @@ type MonitorConfig struct {
 	// Key: release id
 	// Value: Token. consisting of lease duration and the token key
 	Tokens map[string]Token `yaml:"Tokens"`
+
+	// A map value listing all key shards for unseal
+	// Key: shard name
+	// Value: The shard key and the base64 encoded version of that key
+	UnsealKeyShards map[string]KeyShards `yaml:"UnsealKeyShards"`
 }
 
 func (s *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
@@ -69,6 +80,18 @@ func (s *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
 		}
 	}
 
+	// Validate YAML input for unseal key shards
+	for shardName, shard := range s.UnsealKeyShards {
+		// A shard should have both its key and base64 key non-empty
+		if shard.Key == "" || shard.KeyBase64 == "" {
+			return fmt.Errorf("shard %v has missing keys", shardName)
+		}
+		// Base64 encoded keys must be able to be decoded with no errors
+		_, err := base64.StdEncoding.DecodeString(shard.KeyBase64)
+		if err != nil {
+			return fmt.Errorf("error with validating if %v has a correct base64 encoded key: %v", shardName, err)
+		}
+	}
 	return nil
 }
 
