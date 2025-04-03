@@ -1,6 +1,12 @@
+//
+// Copyright (c) 2025 Wind River Systems, Inc.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+
 module github.com/michel-thebeau-WR/openbao-manager-go/baomon/config
 
-go 1.18
+go 1.21
 
 require github.com/go-yaml/yaml v2.1.0+incompatible
 

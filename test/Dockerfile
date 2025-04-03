@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2025 Wind River Systems, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 # Test image for go openbao monitor
 # Debian image with openbao and go openbao monitor installed
 # Example command to build: docker build -f test/Dockerfile .
@@ -5,7 +11,7 @@
 FROM debian:stable-slim
 
 ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang \
-    wget procps less file vim"
+    wget procps less file vim bash-completion"
 
 USER root
 
@@ -19,6 +25,10 @@ RUN mkdir -p /tmp && \
     wget -P /tmp/ https://github.com/openbao/openbao/releases/download/v2.1.0/bao_2.1.0_linux_amd64.deb && \
     dpkg -i /tmp/bao_2.1.0_linux_amd64.deb
 
+# Copy over go openbao monitor
+# Use the output folder used in the build
+COPY ./bin/baomon /usr/bin/
+
 # create a non-root user/group for openbao-manager
 RUN groupadd --gid 1000 manager \
     && adduser --uid 1000 --gid 1000 manager \
@@ -26,8 +36,13 @@ RUN groupadd --gid 1000 manager \
 
 USER manager
 
-# Copy over go openbao monitor
-# Use the output folder used in the build
-COPY ./bin/baomon .
+# Copy and run auto-completion
+COPY ./bin/baomon.completion /usr/share/bash-completion/completions/baomon
+
+RUN echo "source /etc/bash_completion" >> /workdir/.bashrc
+
+# Copy testing files
+COPY ./test/testConfig.yaml /workdir/
+COPY ./test/config/ /workdir/
 
 CMD ["bash"]
