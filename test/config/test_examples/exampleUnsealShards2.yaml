@@ -1,5 +1,10 @@
-# Missing keys
+#
+# Copyright (c) 2025 Wind River Systems, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
 
+# Missing keys
 
 UnsealKeyShards:
   sample_key_1:
