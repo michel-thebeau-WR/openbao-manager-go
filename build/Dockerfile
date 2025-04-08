@@ -21,6 +21,10 @@ RUN go mod tidy
 
 RUN go build -o /out/baomon .
 
+# save the module sources
+RUN mkdir /src/mod; GOPATH=/src/mod go get; \
+    tar zcf /out/mod.src.tar.gz /src/mod
+
 # create auto-completion file
 RUN mkdir /workdir; cp ./test/testConfig.yaml /workdir/; \
     /out/baomon completion bash > /out/baomon.completion
