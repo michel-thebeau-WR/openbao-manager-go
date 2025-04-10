@@ -26,8 +26,14 @@ RUN mkdir /src/mod; GOPATH=/src/mod go get; \
     tar zcf /out/mod.src.tar.gz /src/mod
 
 # create auto-completion file
-RUN mkdir /workdir; cp ./test/testConfig.yaml /workdir/; \
-    /out/baomon completion bash > /out/baomon.completion
+RUN mkdir /workdir; cp ./test/testConfig.yaml /workdir/
+
+# copy the ca files briefly so baomon doesn't error out during
+# generating completion script. Will be deleted along with the image after.
+COPY ./bin/OpenBaoCA/ /workdir/OpenBaoCA/
+COPY ./bin/OpenBaoServerCert/ /workdir/OpenBaoServerCert/
+
+RUN /out/baomon completion bash > /out/baomon.completion
 
 FROM scratch AS bin
 

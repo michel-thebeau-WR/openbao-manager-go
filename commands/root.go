@@ -25,6 +25,7 @@ var RootCmd = &cobra.Command{
 	Short: "A monitor service for managing Openbao in StarlingX",
 	Long:  `A monitor service for managing Openbao servers in StarlingX systems.`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		// Open config from file
 		configReader, err := os.Open(configFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr,
@@ -66,7 +67,25 @@ var RootCmd = &cobra.Command{
 		slog.Info(fmt.Sprintf("Set log level: %v", logLevel))
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
-		logWriter.Close()
+		// For now write back the configs back to the config file
+		// This should be changed to writing back to configs from file only
+		configWriter, err := os.OpenFile(configFile, os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with opening config file to write in the changed configs\n")
+			fmt.Fprintf(os.Stderr, "Message: %v\n", err)
+		}
+		err = globalConfig.WriteYAMLMonitorConfig(configWriter)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with writing the changed configs\n")
+			fmt.Fprintf(os.Stderr, "Message: %v\n", err)
+		}
+
+		// Close the log file
+		err = logWriter.Close()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error with closing the log file\n")
+			fmt.Fprintf(os.Stderr, "Message: %v\n", err)
+		}
 	},
 }
 
