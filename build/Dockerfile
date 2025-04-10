@@ -27,6 +27,7 @@ RUN mkdir /src/mod; GOPATH=/src/mod go get; \
 
 # create auto-completion file
 RUN mkdir /workdir; cp ./test/testConfig.yaml /workdir/; \
+    touch /workdir/rootca.crt; \
     /out/baomon completion bash > /out/baomon.completion
 
 FROM scratch AS bin

@@ -9,8 +9,12 @@ package baoConfig
 import (
 	"fmt"
 	"io"
+	"log/slog"
+	"strconv"
+	"strings"
 
 	"github.com/go-yaml/yaml"
+	openbao "github.com/openbao/openbao/api/v2"
 )
 
 type URL struct {
@@ -43,6 +47,11 @@ type MonitorConfig struct {
 	// Key: shard name
 	// Value: The shard key and the base64 encoded version of that key
 	UnsealKeyShards map[string]KeyShards `yaml:"UnsealKeyShards"`
+
+	// A string of path to the PEM-encoded CA cert file to use to verify
+	// Openbao's server SSL certificate
+	// Leave this empty if using the default CA cert file location
+	CACert string `yaml:"CACert"`
 
 	// The default path of the log file
 	LogPath string `yaml:"logPath"`
@@ -83,6 +92,12 @@ func (configInstance *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
 		return err
 	}
 
+	// Validate YAML input for CACert
+	err = configInstance.validateCACert()
+	if err != nil {
+		return err
+	}
+
 	// Validate YAML input for log configs
 	err = configInstance.validateLogConfig()
 	if err != nil {
@@ -103,6 +118,86 @@ func (configInstance MonitorConfig) WriteYAMLMonitorConfig(out io.Writer) error 
 	if err != nil {
 		return fmt.Errorf(
 			"unable to write marshaled Host DNS config YAML data. Error message: %v", err)
+	}
+
+	return nil
+}
+
+// Create a new openbao config based on the monitor config
+func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.Config, error) {
+	defConfig := openbao.DefaultConfig()
+
+	// Check if DefaultConfig has issues
+	if defConfig.Error != nil {
+		return defConfig, fmt.Errorf("issue found in openbao default config: %v", defConfig.Error)
+	}
+	slog.Debug("No issues found in retrieving openbao default config.")
+
+	// Check if there is a domain name listed under IncludeInCluster
+	dnsAddr, ok := configInstance.DNSnames[dnshost]
+	if !ok {
+		return defConfig, fmt.Errorf("unable to find %v under the list of available DNS names", dnshost)
+	}
+
+	// Set the DNS address as the address to openbao
+	defConfig.Address = strings.Join([]string{"https://", dnsAddr.Host, ":", strconv.Itoa(dnsAddr.Port)}, "")
+
+	slog.Debug(fmt.Sprintf("Openbao address set to %v", defConfig.Address))
+
+	// If there is a CACert entry, apply to openbao config
+	if configInstance.CACert != "" {
+		slog.Debug(fmt.Sprintf(
+			"CACert entry %v found within the monitor config file. Attempting to apply to openbao config", configInstance.CACert))
+		var newTLSconfig openbao.TLSConfig
+
+		newTLSconfig.CACert = configInstance.CACert
+		newTLSconfig.Insecure = true
+		err := defConfig.ConfigureTLS(&newTLSconfig)
+		if err != nil {
+			return defConfig, fmt.Errorf("error with configuring TLS for openbao: %v", err)
+		}
+
+		slog.Debug("Configuring TLS successful")
+	}
+
+	return defConfig, nil
+}
+
+// Parse the new keys from the init responce into the monitor config
+func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce *openbao.InitResponse) error {
+	keyShardheader := strings.Join([]string{"key", "shard", dnshost}, "-")
+
+	// Parse in the root token
+	if _, ok := configInstance.Tokens["root_token"]; ok {
+		return fmt.Errorf("an entry of the root token was already found")
+	}
+	configInstance.Tokens["root_token"] = Token{
+		Duration: 0,
+		Key:      responce.RootToken,
+	}
+
+	// Parse in the key shards for unseal
+	for i := range len(responce.Keys) {
+		keyShardName := strings.Join([]string{keyShardheader, strconv.Itoa(i)}, "-")
+		if _, ok := configInstance.UnsealKeyShards[keyShardName]; ok {
+			return fmt.Errorf("an entry of %v was already found under UnsealKeyShards", keyShardName)
+		}
+		configInstance.UnsealKeyShards[keyShardName] = KeyShards{
+			Key:       responce.Keys[i],
+			KeyBase64: responce.KeysB64[i],
+		}
+	}
+
+	// Parse in the recovery key shards
+	for i := range len(responce.RecoveryKeys) {
+		keyShardName := strings.Join([]string{keyShardheader, "recovery", strconv.Itoa(i)}, "-")
+		if _, ok := configInstance.UnsealKeyShards[keyShardName]; ok {
+			return fmt.Errorf("an entry of %v was already found under UnsealKeyShards", keyShardName)
+		}
+		configInstance.UnsealKeyShards[keyShardName] = KeyShards{
+			Key:       responce.RecoveryKeys[i],
+			KeyBase64: responce.RecoveryKeysB64[i],
+		}
 	}
 
 	return nil
