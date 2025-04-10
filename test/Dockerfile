@@ -11,7 +11,7 @@
 FROM debian:stable-slim
 
 ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang \
-    wget procps less file vim bash-completion"
+    wget procps less file vim bash-completion gzip tar sudo"
 
 USER root
 
@@ -34,6 +34,10 @@ RUN groupadd --gid 1000 manager \
     && adduser --uid 1000 --gid 1000 manager \
         --home /workdir --shell /bin/bash
 
+RUN echo "root:root" | chpasswd
+RUN echo "manager:manager" | chpasswd
+RUN usermod -aG sudo manager
+
 USER manager
 
 # Copy and run auto-completion
@@ -42,7 +46,8 @@ COPY ./bin/baomon.completion /usr/share/bash-completion/completions/baomon
 RUN echo "source /etc/bash_completion" >> /workdir/.bashrc
 
 # Copy testing files
-COPY ./test/testConfig.yaml /workdir/
-COPY ./test/config/ /workdir/
+COPY ./bin/OpenBaoCA/ /workdir/OpenBaoCA/
+COPY ./bin/OpenBaoServerCert/ /workdir/OpenBaoServerCert/
+COPY ./test/* /workdir/
 
 CMD ["bash"]
