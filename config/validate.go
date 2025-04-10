@@ -79,3 +79,15 @@ func (configInstance MonitorConfig) validateLogConfig() error {
 
 	return nil
 }
+
+func (configInstance MonitorConfig) validateCACert() error {
+	if configInstance.CACert != "" {
+		_, err := os.Stat(configInstance.CACert)
+		if err != nil {
+			return fmt.Errorf(
+				"error in checking the path of CACert. Error message: %v", err)
+		}
+	}
+
+	return nil
+}

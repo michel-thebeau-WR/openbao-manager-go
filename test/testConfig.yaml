@@ -4,5 +4,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
+IncludeInCluster:
+  controller-0:
+    host: "Openbao"
+    port: 8200
+CACert: "/workdir/OpenBaoCA/ca.crt"
+ClientCert: "/workdir/OpenBaoCA/tls.crt"
+ClientKey: "/workdir/OpenBaoCA/tls.key"
 logPath: "/workdir/openbao_monitor.log"
 logLevel: "DEBUG"
