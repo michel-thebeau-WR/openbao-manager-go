@@ -22,15 +22,18 @@ var secretThreshold int
 
 func initializeOpenbao(dnshost string, opts *openbao.InitRequest) error {
 	slog.Debug(fmt.Sprintf("Attempting the initialize openbao on host %v", dnshost))
-	newConfig, err := globalConfig.NewOpenbaoConfig(dnshost)
+	newClient, err := globalConfig.SetupClient(dnshost)
 	if err != nil {
-		return fmt.Errorf("error in creating new config for openbao: %v", err)
+		return err
 	}
 
-	slog.Debug("Creating Openbao client for API access")
-	newClient, err := openbao.NewClient(newConfig)
+	slog.Debug("Checking current openbao status")
+	healthResult, err := checkHealth(dnshost, newClient)
 	if err != nil {
-		return fmt.Errorf("error in creating new client for openbao: %v", err)
+		return err
+	}
+	if healthResult.Initialized {
+		return fmt.Errorf("openbao server on host %v is already initialized", dnshost)
 	}
 
 	slog.Debug("Running /sys/init")

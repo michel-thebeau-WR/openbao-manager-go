@@ -171,6 +171,22 @@ func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.C
 	return defConfig, nil
 }
 
+func (configInstance MonitorConfig) SetupClient(dnshost string) (*openbao.Client, error) {
+	slog.Debug(fmt.Sprintf("Setting up client for host %v", dnshost))
+	newConfig, err := configInstance.NewOpenbaoConfig(dnshost)
+	if err != nil {
+		return nil, fmt.Errorf("error in creating new config for openbao: %v", err)
+	}
+
+	slog.Debug("Creating Openbao client for API access")
+	newClient, err := openbao.NewClient(newConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error in creating new client for openbao: %v", err)
+	}
+
+	return newClient, nil
+}
+
 // Parse the new keys from the init responce into the monitor config
 func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce *openbao.InitResponse) error {
 	slog.Debug("Parsing response from /sys/init to monitor configs")
