@@ -6,7 +6,7 @@
 
 module github.com/michel-thebeau-WR/openbao-manager-go/baomon/commands
 
-go 1.22.1
+go 1.23.1
 
 toolchain go1.24.2
 
