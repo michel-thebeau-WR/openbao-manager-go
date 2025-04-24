@@ -65,6 +65,11 @@ type MonitorConfig struct {
 	// The default log level
 	// Available log levels: DEBUG, INFO, WARN and ERROR
 	LogLevel string `yaml:"logLevel"`
+
+	// The time in seconds waited between each unseal check in the run command.
+	// If this is unset or set to 0, the command option can be used to supply the time.
+	// If neither is supplied, then default time of 5 seconds will be used.
+	WaitInterval int `yaml:"WaitInterval"`
 }
 
 func (configInstance *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
