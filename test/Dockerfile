@@ -6,7 +6,15 @@
 
 # Test image for go openbao monitor
 # Debian image with openbao and go openbao monitor installed
-# Example command to build: docker build -f test/Dockerfile .
+# Example commands to build:
+#   test/scripts/gen_certs.sh
+#   docker build -f test/Dockerfile .
+#
+# gen_certs.sh only needs to be run once, with the CA cert expiry of
+# 10 years and the server/client certs expiring in 30 days.
+# gen_certs.sh will not regenerate the CA cert if it exists, so that
+# testing with a web browser doesn't require replacing the trusted
+# certificate.
 
 FROM debian:stable-slim
 
@@ -46,6 +54,7 @@ RUN echo "source /etc/bash_completion" >> /workdir/.bashrc
 # Copy testing files
 COPY ./bin/OpenBaoCA/ /workdir/OpenBaoCA/
 COPY ./bin/OpenBaoServerCert/ /workdir/OpenBaoServerCert/
+COPY ./bin/OpenBaoClientCert/ /workdir/OpenBaoClientCert/
 COPY ./test/* /workdir/
 
 RUN chown -R manager:manager /workdir
