@@ -9,8 +9,8 @@ IncludeInCluster:
     host: "Openbao"
     port: 8200
 CACert: "/workdir/OpenBaoCA/ca.crt"
-ClientCert: "/workdir/OpenBaoCA/tls.crt"
-ClientKey: "/workdir/OpenBaoCA/tls.key"
+ClientCert: "/workdir/OpenBaoClientCert/tls.crt"
+ClientKey: "/workdir/OpenBaoClientCert/tls.key"
 logPath: "/workdir/openbao_monitor.log"
 logLevel: "DEBUG"
 WaitInterval: 5
