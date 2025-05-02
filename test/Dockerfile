@@ -38,8 +38,6 @@ RUN echo "root:root" | chpasswd
 RUN echo "manager:manager" | chpasswd
 RUN usermod -aG sudo manager
 
-USER manager
-
 # Copy and run auto-completion
 COPY ./bin/baomon.completion /usr/share/bash-completion/completions/baomon
 
@@ -49,5 +47,9 @@ RUN echo "source /etc/bash_completion" >> /workdir/.bashrc
 COPY ./bin/OpenBaoCA/ /workdir/OpenBaoCA/
 COPY ./bin/OpenBaoServerCert/ /workdir/OpenBaoServerCert/
 COPY ./test/* /workdir/
+
+RUN chown -R manager:manager /workdir
+
+USER manager
 
 CMD ["bash"]
