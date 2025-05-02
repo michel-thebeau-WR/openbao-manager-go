@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-yaml/yaml"
 	openbao "github.com/openbao/openbao/api/v2"
@@ -70,6 +71,11 @@ type MonitorConfig struct {
 	// If this is unset or set to 0, the command option can be used to supply the time.
 	// If neither is supplied, then default time of 5 seconds will be used.
 	WaitInterval int `yaml:"WaitInterval"`
+
+	// Time, in seconds, the openbao client will wait for each request before
+	// returning timeout exceeded error.
+	// Set this value in negative to use the default value of 60 seconds.
+	Timeout int `yaml:"Timeout"`
 }
 
 func (configInstance *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
@@ -173,6 +179,13 @@ func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.C
 	}
 
 	slog.Debug("Configuring TLS successful")
+
+	// Set the timeout value. Do not set the value if it is negative.
+	if configInstance.Timeout >= 0 {
+		defConfig.Timeout = time.Duration(configInstance.Timeout) * time.Second
+	}
+
+	// Config creation complete.
 	return defConfig, nil
 }
 

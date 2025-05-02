@@ -9,6 +9,7 @@ import (
 
 	openbao "github.com/openbao/openbao/api/v2"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/rest"
 )
 
 var waitInterval int
@@ -26,17 +27,36 @@ attempt to unseal.`,
 			waitInterval = globalConfig.WaitInterval
 		}
 
-		clientMap := make(map[string]*openbao.Client, len(globalConfig.DNSnames))
-		for host := range maps.Keys(globalConfig.DNSnames) {
-			slog.Debug(fmt.Sprintf("Creating client for host %v", host))
-			newClient, err := globalConfig.SetupClient(host)
+		var k8sconfig *rest.Config = nil
+		var err error = nil
+
+		if useK8sConfig {
+			k8sconfig, err = getK8sConfig()
 			if err != nil {
-				return fmt.Errorf("error occured during creating client for host %v: %v", host, err)
+				return nil
 			}
-			clientMap[host] = newClient
 		}
 
 		for {
+			// If config was pulled from k8s, repull each time to reset the list of adresses,
+			// in case any of them changed
+			if useK8sConfig {
+				err := globalConfig.MigratePodConfig(k8sconfig)
+				if err != nil {
+					return nil
+				}
+			}
+
+			clientMap := make(map[string]*openbao.Client, len(globalConfig.DNSnames))
+			for host := range maps.Keys(globalConfig.DNSnames) {
+				slog.Debug(fmt.Sprintf("Creating client for host %v", host))
+				newClient, err := globalConfig.SetupClient(host)
+				if err != nil {
+					return fmt.Errorf("error occured during creating client for host %v: %v", host, err)
+				}
+				clientMap[host] = newClient
+			}
+
 			for host, client := range clientMap {
 				slog.Debug(fmt.Sprintf("Checking current health status for host %v", host))
 				healthStatus, err := checkHealth(host, client)
