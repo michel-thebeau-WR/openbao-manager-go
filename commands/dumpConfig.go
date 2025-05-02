@@ -13,6 +13,7 @@ import (
 
 	baoConfig "github.com/michel-thebeau-WR/openbao-manager-go/baomon/config"
 	"github.com/spf13/cobra"
+	yaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
 var dumpConfigReadCmd = &cobra.Command{
@@ -82,6 +83,22 @@ var dumpConfigWriteCmd = &cobra.Command{
 	},
 }
 
+var dumpConfigPrintGlobal = &cobra.Command{
+	Use:                "global",
+	Short:              "Dev command that prints current global config",
+	Long:               "Dev command that prints current global config. For testing setup & clean",
+	PersistentPreRunE:  setupCmd,
+	PersistentPostRunE: cleanCmd,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		configBytes, err := yaml.Marshal(globalConfig)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(configBytes))
+		return nil
+	},
+}
+
 var dumpConfigCmd = &cobra.Command{
 	Use:   "dumpConfig",
 	Short: "Dev command for read/write YAML config files",
@@ -91,5 +108,6 @@ var dumpConfigCmd = &cobra.Command{
 func init() {
 	dumpConfigCmd.AddCommand(dumpConfigReadCmd)
 	dumpConfigCmd.AddCommand(dumpConfigWriteCmd)
+	dumpConfigCmd.AddCommand(dumpConfigPrintGlobal)
 	RootCmd.AddCommand(dumpConfigCmd)
 }

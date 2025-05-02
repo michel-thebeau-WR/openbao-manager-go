@@ -8,7 +8,7 @@
 # The build result should be in the output folder
 # Example: docker build --target bin --output bin/ -f ./build/Dockerfile .
 
-FROM golang:1.24.1-bookworm AS build
+FROM golang:1.24.3-bullseye AS build
 
 WORKDIR /src
 

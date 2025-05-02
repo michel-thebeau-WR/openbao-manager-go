@@ -13,12 +13,35 @@ import (
 
 	baoConfig "github.com/michel-thebeau-WR/openbao-manager-go/baomon/config"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 var configFile string
 var globalConfig baoConfig.MonitorConfig
 var logWriter *os.File
 var baoLogger *slog.Logger
+var useK8sConfig bool
+var useInClusterConfig bool
+var kubeConfigPath string
+
+func getK8sConfig() (*rest.Config, error) {
+	var config *rest.Config
+	var err error = nil
+	if useInClusterConfig {
+		config, err = rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return config, nil
+}
 
 func setupCmd(cmd *cobra.Command, args []string) error {
 	// Open config from file
@@ -30,6 +53,22 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	err = globalConfig.ReadYAMLMonitorConfig(configReader)
 	if err != nil {
 		return fmt.Errorf("error in parsing config file: %v, message: %v", configFile, err)
+	}
+
+	// If useK8sConfig is set to true, then it will override the following configs:
+	// DNSnames, Tokens, UnsealKeyShards
+	if useK8sConfig {
+		// create client config
+		config, err := getK8sConfig()
+		if err != nil {
+			return err
+		}
+
+		// Get the necessary configs from kubernetes
+		err = globalConfig.MigrateK8sConfig(config)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Set default configuration for logs if no custum configs are given
@@ -60,19 +99,24 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 }
 
 func cleanCmd(cmd *cobra.Command, args []string) error {
-	// For now write back the configs back to the config file
-	// This should be changed to writing back to configs from file only
-	configWriter, err := os.OpenFile(configFile, os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("error with opening config file to write in the changed configs: %v", err)
-	}
-	err = globalConfig.WriteYAMLMonitorConfig(configWriter)
-	if err != nil {
-		return fmt.Errorf("error with writing the changed configs: %v", err)
+	// Write back to configs from file only
+	if !useK8sConfig {
+		configWriter, err := os.OpenFile(configFile, os.O_WRONLY|os.O_TRUNC, 0644)
+		if err != nil {
+			return fmt.Errorf("error with opening config file to write in the changed configs: %v", err)
+		}
+		err = globalConfig.WriteYAMLMonitorConfig(configWriter)
+		if err != nil {
+			return fmt.Errorf("error with writing the changed configs: %v", err)
+		}
+		err = configWriter.Close()
+		if err != nil {
+			return fmt.Errorf("error with closing the changed config file: %v", err)
+		}
 	}
 
 	// Close the log file
-	err = logWriter.Close()
+	err := logWriter.Close()
 	if err != nil {
 		return fmt.Errorf("error with closing the log file: %v", err)
 	}
@@ -97,4 +141,9 @@ func init() {
 	// Declarations for global flags
 	RootCmd.PersistentFlags().StringVar(&configFile, "config",
 		"/workdir/testConfig.yaml", "file path to the monitor config file")
+	RootCmd.PersistentFlags().BoolVar(&useK8sConfig, "k8s", false, "use openbao configs from kubernetes instead")
+	RootCmd.PersistentFlags().BoolVar(&useInClusterConfig, "in-cluster", true,
+		"Set this to true if baomon is run in a kubernetes pod")
+	RootCmd.PersistentFlags().StringVar(&kubeConfigPath, "kubeconfig", "/etc/kubernetes/admin.conf",
+		"The path for kubernetes config file (KUBECONFIG)")
 }
