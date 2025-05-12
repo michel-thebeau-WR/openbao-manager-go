@@ -18,20 +18,19 @@
 
 FROM debian:stable-slim
 
-ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime golang \
+ENV PKG_LIST="mawk bash coreutils curl grep sed jq uuid-runtime \
     wget procps less file vim bash-completion gzip tar sudo"
 
 USER root
 
-# install packages
+# install listed packages, and openbao server
 RUN set -ex; \
     apt-get update && apt-get install -y $PKG_LIST \
-    && apt-get clean && rm -r /var/lib/apt/lists/*
-
-# Download openbao
-RUN mkdir -p /tmp && \
-    wget -P /tmp/ https://github.com/openbao/openbao/releases/download/v2.1.0/bao_2.1.0_linux_amd64.deb && \
-    dpkg -i /tmp/bao_2.1.0_linux_amd64.deb
+    && apt-get clean && rm -r /var/lib/apt/lists/* \
+    && mkdir -p /tmp \
+    && wget -P /tmp/ https://github.com/openbao/openbao/releases/download/v2.1.0/bao_2.1.0_linux_amd64.deb \
+    && dpkg -i /tmp/bao_2.1.0_linux_amd64.deb \
+    && rm /tmp/bao_2.1.0_linux_amd64.deb
 
 # Copy over go openbao monitor
 # Use the output folder used in the build
