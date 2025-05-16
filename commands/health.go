@@ -21,12 +21,14 @@ func checkHealth(dnshost string, client *openbao.Client) (*openbao.HealthRespons
 }
 
 var healthCmd = &cobra.Command{
-	Use:   "health DNSHost",
-	Short: "Check openbao health",
-	Long:  "Check the health status of the openbao server on the specified host",
-	Args:  cobra.ExactArgs(1),
+	Use:                "health DNSHost",
+	Short:              "Check openbao health",
+	Long:               "Check the health status of the openbao server on the specified host",
+	Args:               cobra.ExactArgs(1),
+	PersistentPreRunE:  setupCmd,
+	PersistentPostRunE: cleanCmd,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.Debug("Action: health")
+		slog.Debug(fmt.Sprintf("Action: Health %v", args[0]))
 
 		cmd.SilenceUsage = true
 		newClient, err := globalConfig.SetupClient(args[0])
@@ -48,8 +50,6 @@ var healthCmd = &cobra.Command{
 
 		return nil
 	},
-	PersistentPreRunE:  setupCmd,
-	PersistentPostRunE: cleanCmd,
 }
 
 func init() {
