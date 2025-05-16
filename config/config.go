@@ -18,7 +18,7 @@ import (
 	openbao "github.com/openbao/openbao/api/v2"
 )
 
-type URL struct {
+type OpenbaoAddress struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
 }
@@ -36,8 +36,8 @@ type KeyShards struct {
 type MonitorConfig struct {
 	// A map value listing all DNS names
 	// Key: Domain name
-	// Value: URL. consisting of host address and port number
-	DNSnames map[string]URL `yaml:"IncludeInCluster"`
+	// Value: OpenbaoAddress. consisting of host address and port number
+	OpenbaoAddresses map[string]OpenbaoAddress `yaml:"OpenbaoAddresses"`
 
 	// A map value listing all authentication tokens
 	// Key: release id
@@ -60,7 +60,7 @@ type MonitorConfig struct {
 	// ClientKey is the path to the private key for Vault communication
 	ClientKey string `yaml:"ClientKey"`
 
-	// The default path of the log file
+	// The path of the log file
 	LogPath string `yaml:"logPath"`
 
 	// The default log level
@@ -76,6 +76,28 @@ type MonitorConfig struct {
 	// returning timeout exceeded error.
 	// Set this value in negative to use the default value of 60 seconds.
 	Timeout int `yaml:"Timeout"`
+
+	// Namespace used for openbao.
+	// Default is "openbao"
+	Namespace string `yaml:"Namespace"`
+
+	// Default port for all addresses.
+	// If the port number was not specified in the config file, it will use this port number.
+	// This port number will also be used for all generated addresses from Kubernetes pods
+	// Default value is always 8200
+	DefaultPort int `yaml:"DefaultPort"`
+
+	// Prefix string used to find all openbao server pods
+	// Default is "stx-openbao"
+	PodPrefix string `yaml:"PodPrefix"`
+
+	// Suffix string for all generated pod addresses
+	// Default is "pod.cluster.local"
+	PodAddressSuffix string `yaml:"PodAddressSuffix"`
+
+	// Prefix string used to find root token and unseal key shards
+	// Default is "cluster-key"
+	SecretPrefix string `yaml:"SecretPrefix"`
 }
 
 func (configInstance *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
@@ -91,7 +113,20 @@ func (configInstance *MonitorConfig) ReadYAMLMonitorConfig(in io.Reader) error {
 			"unable to unmarshal Host DNS config YAML data. Error message: %v", err)
 	}
 
-	// Validate YAML input for DNSnames
+	// Use default port value of 8200, if no default port was specified.
+	if configInstance.DefaultPort == 0 {
+		configInstance.DefaultPort = 8200
+	}
+
+	// Fill in empty ports
+	for dnsname, addr := range configInstance.OpenbaoAddresses {
+		if addr.Port == 0 {
+			addr.Port = configInstance.DefaultPort
+			configInstance.OpenbaoAddresses[dnsname] = addr
+		}
+	}
+
+	// Validate YAML input for OpenbaoAddresses
 	err = configInstance.validateDNS()
 	if err != nil {
 		return err
@@ -150,8 +185,8 @@ func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.C
 	}
 	slog.Debug("No issues found in retrieving openbao default config.")
 
-	// Check if there is a domain name listed under IncludeInCluster
-	dnsAddr, ok := configInstance.DNSnames[dnshost]
+	// Check if there is a domain name listed under OpenbaoAddresses
+	dnsAddr, ok := configInstance.OpenbaoAddresses[dnshost]
 	if !ok {
 		return defConfig, fmt.Errorf("unable to find %v under the list of available DNS names", dnshost)
 	}

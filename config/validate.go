@@ -10,11 +10,12 @@ import (
 )
 
 func (configInstance MonitorConfig) validateDNS() error {
-	for domain_name, url := range configInstance.DNSnames {
-		// If either Host or Port number is empty, then the domain entry is invalid
-		if url.Host == "" || url.Port == 0 {
+	for domain_name, url := range configInstance.OpenbaoAddresses {
+		// If Host is empty, then the domain entry is invalid
+		// The ports will always at least have the default value of 8200
+		if url.Host == "" {
 			return fmt.Errorf(
-				"the domain entry %v in config InvludeInCluster is invalid", domain_name)
+				"the domain entry %v in OpenbaoAddresses is invalid", domain_name)
 		}
 	}
 
