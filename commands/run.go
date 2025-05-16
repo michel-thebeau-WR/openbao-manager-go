@@ -47,8 +47,8 @@ attempt to unseal.`,
 				}
 			}
 
-			clientMap := make(map[string]*openbao.Client, len(globalConfig.DNSnames))
-			for host := range maps.Keys(globalConfig.DNSnames) {
+			clientMap := make(map[string]*openbao.Client, len(globalConfig.OpenbaoAddresses))
+			for host := range maps.Keys(globalConfig.OpenbaoAddresses) {
 				slog.Debug(fmt.Sprintf("Creating client for host %v", host))
 				newClient, err := globalConfig.SetupClient(host)
 				if err != nil {

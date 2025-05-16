@@ -12,8 +12,12 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// Default values in case the values are not included in the config
 var openbaoNamespace string = "openbao"
 var podPort int = 8200
+var podPrefix string = "stx-openbao"
+var podAddressSuffix string = "pod.cluster.local"
+var secretPrefix string = "cluster-key"
 
 type keySecret struct {
 	Key        []string `json:"keys"`
@@ -22,6 +26,20 @@ type keySecret struct {
 
 // Get list of DNS names fro k8s pods
 func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error {
+	// Use the settings from config if they aren't empty
+	if configInstance.Namespace != "" {
+		openbaoNamespace = configInstance.Namespace
+	}
+	if configInstance.DefaultPort != 0 {
+		podPort = configInstance.DefaultPort
+	}
+	if configInstance.PodPrefix != "" {
+		podPrefix = configInstance.PodPrefix
+	}
+	if configInstance.PodAddressSuffix != "" {
+		podAddressSuffix = configInstance.PodAddressSuffix
+	}
+
 	// create clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -40,20 +58,20 @@ func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error
 	}
 
 	// clear existing DNS names
-	configInstance.DNSnames = make(map[string]URL)
+	configInstance.OpenbaoAddresses = make(map[string]OpenbaoAddress)
 
-	// Use pod and its ip to fill in the "DNSNames" section
-	r, _ := regexp.Compile(`stx-openbao-\d$`)
+	// Use pod and its ip to fill in the "OpenbaoAddresses" section
+	r, _ := regexp.Compile(fmt.Sprintf("%v-\\d$", podPrefix))
 	for _, pod := range pods.Items {
 		podName := pod.ObjectMeta.Name
 		if r.Match([]byte(podName)) {
 			podIP := pod.Status.PodIP
-			podURL := fmt.Sprintf("%v.%v.pod.cluster.local", strings.ReplaceAll(podIP, ".", "-"), openbaoNamespace)
-			configInstance.DNSnames[podName] = URL{podURL, podPort}
+			podURL := fmt.Sprintf("%v.%v.%v", strings.ReplaceAll(podIP, ".", "-"), openbaoNamespace, podAddressSuffix)
+			configInstance.OpenbaoAddresses[podName] = OpenbaoAddress{podURL, podPort}
 		}
 	}
 
-	// Validate input for DNSnames
+	// Validate input for OpenbaoAddresses
 	err = configInstance.validateDNS()
 	if err != nil {
 		return err
@@ -64,6 +82,14 @@ func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error
 
 // Get root token and unseal key shards from k8s secrets
 func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) error {
+	// Use the settings from config if they aren't empty
+	if configInstance.Namespace != "" {
+		openbaoNamespace = configInstance.Namespace
+	}
+	if configInstance.SecretPrefix != "" {
+		secretPrefix = configInstance.SecretPrefix
+	}
+
 	// create clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -88,9 +114,9 @@ func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) er
 	// Use secrets to fill in the "Tokens" and "UnsealKeyShards" section
 	for _, secret := range secrets.Items {
 		secretName := secret.ObjectMeta.Name
-		if strings.HasPrefix(secretName, "cluster-key") {
+		if strings.HasPrefix(secretName, secretPrefix) {
 			secretData := secret.Data["strdata"]
-			if secretName == "cluster-key-root" {
+			if strings.HasSuffix(secretName, "root") {
 				// secretData should be the root token
 				configInstance.Tokens[secretName] = Token{Duration: 0, Key: string(secretData)}
 			} else {

@@ -8,6 +8,7 @@ package baoCommands
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 
@@ -56,7 +57,7 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// If useK8sConfig is set to true, then it will override the following configs:
-	// DNSnames, Tokens, UnsealKeyShards
+	// OpenbaoAddresses, Tokens, UnsealKeyShards
 	if useK8sConfig {
 		// create client config
 		config, err := getK8sConfig()
@@ -74,17 +75,19 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	// Set default configuration for logs if no custum configs are given
 	logFile := globalConfig.LogPath
 	logLevel := globalConfig.LogLevel
-	if logFile == "" {
-		logFile = "/workdir/openbao-monitor.log"
-	}
 	if logLevel == "" {
+		// Default log level if no log level was set
 		logLevel = "INFO"
 	}
 
-	// Setup Logs
-	logWriter, err = os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("error in opening the log file to write: %v", err)
+	// Set default to stdout if no log file was specified.
+	var logWriter io.Writer = os.Stdout
+	if logFile != "" {
+		// Setup Logs
+		logWriter, err = os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("error in opening the log file to write: %v", err)
+		}
 	}
 
 	var LogLevel slog.Level
@@ -116,9 +119,11 @@ func cleanCmd(cmd *cobra.Command, args []string) error {
 	}
 
 	// Close the log file
-	err := logWriter.Close()
-	if err != nil {
-		return fmt.Errorf("error with closing the log file: %v", err)
+	if logWriter != os.Stdout {
+		err := logWriter.Close()
+		if err != nil {
+			return fmt.Errorf("error with closing the log file: %v", err)
+		}
 	}
 
 	return nil
