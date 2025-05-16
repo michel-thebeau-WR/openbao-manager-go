@@ -13,21 +13,21 @@ import (
 
 // A single instance of unseal.
 func tryUnseal(keyShard baoConfig.KeyShards, client *openbao.Client) (*openbao.SealStatusResponse, error) {
-	slog.Info("Attempting unseal...")
+	slog.Debug("Attempting unseal...")
 	key := keyShard.Key
 	UnsealResult, err := client.Sys().Unseal(key)
 	if err != nil {
 		return nil, fmt.Errorf("error with unseal call: %v", err)
 	}
-	slog.Info("Unseal attempt successful")
+	slog.Debug("Unseal attempt successful")
 	return UnsealResult, nil
 }
 
 // run unseal on all keys associated with dnshost until unsealed.
 func runUnseal(dnshost string, client *openbao.Client) (*openbao.SealStatusResponse, error) {
-	slog.Info(fmt.Sprintf("Attempting to run unseal on host %v", dnshost))
+	slog.Debug(fmt.Sprintf("Attempting to run unseal on host %v", dnshost))
 
-	slog.Info("Checking if openbao is already unsealed")
+	slog.Debug("Checking if openbao is already unsealed")
 	healthResult, err := checkHealth(dnshost, client)
 	if err != nil {
 		return nil, err
@@ -40,13 +40,13 @@ func runUnseal(dnshost string, client *openbao.Client) (*openbao.SealStatusRespo
 	for keyName, keyShard := range globalConfig.UnsealKeyShards {
 		// Don't use recovery keys
 		if !strings.Contains(keyName, "recovery") {
-			slog.Info(fmt.Sprintf("Unseal attempt %v", tryCount))
+			slog.Debug(fmt.Sprintf("Unseal attempt %v", tryCount))
 			UnsealResult, err := tryUnseal(keyShard, client)
 			if err != nil {
 				return nil, err
 			}
 			if !UnsealResult.Sealed {
-				slog.Info("Unseal complete.")
+				slog.Debug("Unseal complete.")
 				return UnsealResult, nil
 			}
 			slog.Debug(fmt.Sprintf("Openbao still sealed: threshold %v, progress %v", UnsealResult.T, UnsealResult.Progress))
@@ -66,7 +66,7 @@ non-recovery keys with its name on it to unseal.`,
 	PersistentPreRunE:  setupCmd,
 	PersistentPostRunE: cleanCmd,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.Debug("Action: unseal")
+		slog.Debug(fmt.Sprintf("Action: unseal %v", args[0]))
 
 		cmd.SilenceUsage = true
 		newClient, err := globalConfig.SetupClient(args[0])
@@ -82,7 +82,8 @@ non-recovery keys with its name on it to unseal.`,
 		if err != nil {
 			return fmt.Errorf("unable to marshal unseal result: %v", err)
 		}
-		slog.Info(fmt.Sprintf("Unseal successful. Result: %v", string(UnsealPrint)))
+		slog.Debug(fmt.Sprintf("Unseal successful. Result: %v", string(UnsealPrint)))
+		slog.Info(fmt.Sprintf("Unseal successful for host %v", args[0]))
 
 		return nil
 	},

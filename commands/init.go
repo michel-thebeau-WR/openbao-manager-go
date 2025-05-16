@@ -60,14 +60,13 @@ configurations.`,
 	Args:              cobra.ExactArgs(1),
 	PersistentPreRunE: setupCmd,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.Debug("Action: init")
+		slog.Debug(fmt.Sprintf("Action: init %v", args[0]))
 		fileGiven := cmd.Flags().Lookup("file").Changed
 		secretSharesFlag := cmd.Flags().Lookup("secret-shares").Changed
 		secretThresholdFlag := cmd.Flags().Lookup("secret-threshold").Changed
 
 		if (fileGiven && (secretSharesFlag || secretThresholdFlag)) ||
 			(!fileGiven && !(secretSharesFlag && secretThresholdFlag)) {
-			slog.Error("Command \"init\" failed due to insufficent init options")
 			fmt.Fprintf(os.Stderr, "The options for openbao init must be set by one of:\n")
 			fmt.Fprintf(os.Stderr, "utilizing an option file using --file, or\n")
 			fmt.Fprintf(os.Stderr, "--secret-shares and -- secret-threshold\n")
@@ -78,25 +77,20 @@ configurations.`,
 		if fileGiven {
 			optFileReader, err := os.ReadFile(optFileStr)
 			if err != nil {
-				slog.Error("Command \"init\" failed due to invalid init option file")
 				return fmt.Errorf("unable to open init option file %v: %v", optFileStr, err)
 			}
 			err = json.Unmarshal(optFileReader, &opts)
 			if err != nil {
-				slog.Error("Command \"init\" failed due to error in parsing init option file")
 				return fmt.Errorf("unable to parse JSON file %v: %v", optFileStr, err)
 			}
 		} else {
 			if secretShares == 0 {
-				slog.Error("Command \"init\" failed due to insufficent number of secret-shares")
 				return fmt.Errorf("the field secret-shares cannot be 0")
 			}
 			if secretThreshold == 0 {
-				slog.Error("Command \"init\" failed due to insufficent number of secret-threshold")
 				return fmt.Errorf("the field secret-threshold cannot be 0")
 			}
 			if secretShares < secretThreshold {
-				slog.Error("Command \"init\" failed due to secret-threshold being greater than secret-shares")
 				return fmt.Errorf("the field secret-threshold cannot be greater than secret-shares")
 			}
 			opts.SecretShares = secretShares
@@ -106,10 +100,9 @@ configurations.`,
 		cmd.SilenceUsage = true
 		err := initializeOpenbao(args[0], &opts)
 		if err != nil {
-			slog.Error("Command \"init\" failed due to error in openbao init")
 			return fmt.Errorf("openbao init failed with error: %v", err)
 		}
-		slog.Debug("Openbao init successful")
+		slog.Info(fmt.Sprintf("Openbao init successful for host %v", args[0]))
 		fmt.Print("Openbao init complete\n")
 		return nil
 	},

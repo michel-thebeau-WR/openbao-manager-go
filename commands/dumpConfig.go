@@ -8,7 +8,6 @@ package baoCommands
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 
 	baoConfig "github.com/michel-thebeau-WR/openbao-manager-go/baomon/config"
@@ -21,24 +20,21 @@ var dumpConfigReadCmd = &cobra.Command{
 	Short: "Read config from a YAML file",
 	Long:  "Read baomon configuration from a specified YAML file, and prints to stdout",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		slog.Debug(fmt.Sprintf("Action: dumpConfig read. File to read: %v", args[0]))
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var S baoConfig.MonitorConfig
 		openedFile, err := os.Open(args[0])
 		if err != nil {
-			slog.Error(fmt.Sprintf("Unable to open file %v. Error message: %v\n", args[0], err))
-			fmt.Fprint(os.Stderr, "Error with reading YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
 		defer openedFile.Close()
 
 		err = S.ReadYAMLMonitorConfig(openedFile)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error with parsing read yaml data: %v\n", err))
-			fmt.Fprint(os.Stderr, "Error with reading YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
 		fmt.Printf("Result: \n%#v\n", S)
+
+		return nil
 	},
 }
 
@@ -47,39 +43,32 @@ var dumpConfigWriteCmd = &cobra.Command{
 	Short: "Write config to another YAML file",
 	Long:  "Copy a config file from the first file to the second file, using baoConfig's write method",
 	Args:  cobra.ExactArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		slog.Debug(fmt.Sprintf("Action: dumpConfig write. File to read: %v. File to write: %v", args[0], args[1]))
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var S baoConfig.MonitorConfig
 		openedFile, err := os.Open(args[0])
 		if err != nil {
-			slog.Error(fmt.Sprintf("Unable to open file %v. Error message: %v\n", args[0], err))
-			fmt.Fprint(os.Stderr, "Error with writing YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
 		defer openedFile.Close()
 
 		err = S.ReadYAMLMonitorConfig(openedFile)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error with parsing read yaml data: %v\n", err))
-			fmt.Fprint(os.Stderr, "Error with writing YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
 
 		writeFile, err := os.Create(args[1])
 		if err != nil {
-			slog.Error(fmt.Sprintf("Unable to open %v for writing\n", args[1]))
-			fmt.Fprint(os.Stderr, "Error with writing YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
 		defer writeFile.Close()
 
 		err = S.WriteYAMLMonitorConfig(writeFile)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error with writing parsed yaml data to file: %v\n", err))
-			fmt.Fprint(os.Stderr, "Error with writing YAML file. Check the logs for details.\n")
-			return
+			return err
 		}
+
 		fmt.Print("Write Complete\n")
+		return nil
 	},
 }
 
