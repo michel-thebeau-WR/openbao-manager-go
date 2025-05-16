@@ -66,7 +66,7 @@ non-recovery keys with its name on it to unseal.`,
 	PersistentPreRunE:  setupCmd,
 	PersistentPostRunE: cleanCmd,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.Debug("Action: unseal")
+		slog.Debug(fmt.Sprintf("Action: unseal %v", args[0]))
 
 		cmd.SilenceUsage = true
 		newClient, err := globalConfig.SetupClient(args[0])

@@ -21,7 +21,7 @@ import (
 var configFile string
 var globalConfig baoConfig.MonitorConfig
 var logWriter *os.File
-var baoLogger *slog.Logger
+var baoLogger *slog.Logger = nil
 var useK8sConfig bool
 var useInClusterConfig bool
 var kubeConfigPath string
@@ -29,18 +29,21 @@ var kubeConfigPath string
 func getK8sConfig() (*rest.Config, error) {
 	var config *rest.Config
 	var err error = nil
+	slog.Debug("Setting up kubernetes config...")
 	if useInClusterConfig {
+		slog.Debug("Baomon is running inside the kubernetes cluster. Using in-cluster configs.")
 		config, err = rest.InClusterConfig()
 		if err != nil {
 			return nil, err
 		}
 	} else {
+		slog.Debug(fmt.Sprintf("Baomon is running outside the kubernetes cluster. Using configs from %v", kubeConfigPath))
 		config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 		if err != nil {
 			return nil, err
 		}
 	}
-
+	slog.Debug("Setting up kubernetes config successful.")
 	return config, nil
 }
 
@@ -54,22 +57,6 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 	err = globalConfig.ReadYAMLMonitorConfig(configReader)
 	if err != nil {
 		return fmt.Errorf("error in parsing config file: %v, message: %v", configFile, err)
-	}
-
-	// If useK8sConfig is set to true, then it will override the following configs:
-	// OpenbaoAddresses, Tokens, UnsealKeyShards
-	if useK8sConfig {
-		// create client config
-		config, err := getK8sConfig()
-		if err != nil {
-			return err
-		}
-
-		// Get the necessary configs from kubernetes
-		err = globalConfig.MigrateK8sConfig(config)
-		if err != nil {
-			return err
-		}
 	}
 
 	// Set default configuration for logs if no custum configs are given
@@ -96,12 +83,29 @@ func setupCmd(cmd *cobra.Command, args []string) error {
 		Level: LogLevel,
 	}))
 	slog.SetDefault(baoLogger)
-	slog.Info(fmt.Sprintf("New call to the monitor service. Logs attached to file %v", logFile))
 	slog.Info(fmt.Sprintf("Set log level: %v", logLevel))
+
+	// If useK8sConfig is set to true, then it will override the following configs:
+	// OpenbaoAddresses, Tokens, UnsealKeyShards
+	if useK8sConfig {
+		// create client config
+		config, err := getK8sConfig()
+		if err != nil {
+			return err
+		}
+
+		// Get the necessary configs from kubernetes
+		err = globalConfig.MigrateK8sConfig(config)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func cleanCmd(cmd *cobra.Command, args []string) error {
+	slog.Debug("Running cleanup...")
 	// Write back to configs from file only
 	if !useK8sConfig {
 		configWriter, err := os.OpenFile(configFile, os.O_WRONLY|os.O_TRUNC, 0644)
@@ -137,7 +141,11 @@ var RootCmd = &cobra.Command{
 
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		slog.Error(fmt.Sprintf("Baomon failed with error: %v", err))
+		if baoLogger != nil {
+			// If logging was setup, print error separately to stderr as well.
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }

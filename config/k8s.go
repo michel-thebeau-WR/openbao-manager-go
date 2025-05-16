@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"strings"
 
@@ -26,6 +27,7 @@ type keySecret struct {
 
 // Get list of DNS names fro k8s pods
 func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error {
+	slog.Debug("Migrating openbao addresses from kubernetes openbao server pods")
 	// Use the settings from config if they aren't empty
 	if configInstance.Namespace != "" {
 		openbaoNamespace = configInstance.Namespace
@@ -40,17 +42,19 @@ func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error
 		podAddressSuffix = configInstance.PodAddressSuffix
 	}
 
+	slog.Debug("Setting up kubernetes client...")
 	// create clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
+	slog.Debug("Setting up kubernetes client complete")
 
 	// client for core
 	coreClient := clientset.CoreV1()
-
 	ctx := context.Background()
 
+	slog.Debug("Accessing openbao server pods for the addresses...")
 	// get pod list
 	pods, err := coreClient.Pods(openbaoNamespace).List(ctx, metaV1.ListOptions{})
 	if err != nil {
@@ -70,6 +74,7 @@ func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error
 			configInstance.OpenbaoAddresses[podName] = OpenbaoAddress{podURL, podPort}
 		}
 	}
+	slog.Debug("All addresses obtained.")
 
 	// Validate input for OpenbaoAddresses
 	err = configInstance.validateDNS()
@@ -77,11 +82,13 @@ func (configInstance *MonitorConfig) MigratePodConfig(config *rest.Config) error
 		return err
 	}
 
+	slog.Debug("Openbao address migration complete.")
 	return nil
 }
 
 // Get root token and unseal key shards from k8s secrets
 func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) error {
+	slog.Debug("Migrating root-token and unseal key shards from openbao kubernetes secrets")
 	// Use the settings from config if they aren't empty
 	if configInstance.Namespace != "" {
 		openbaoNamespace = configInstance.Namespace
@@ -90,17 +97,20 @@ func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) er
 		secretPrefix = configInstance.SecretPrefix
 	}
 
+	slog.Debug("Setting up kubernetes client...")
 	// create clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		return err
 	}
+	slog.Debug("Setting up kubernetes client complete")
 
 	// client for secret
 	secretClient := clientset.CoreV1().Secrets(openbaoNamespace)
 
 	ctx := context.Background()
 
+	slog.Debug("Accessing openbao secrets for the info...")
 	// get secrets list
 	secrets, err := secretClient.List(ctx, metaV1.ListOptions{})
 	if err != nil {
@@ -133,6 +143,7 @@ func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) er
 			}
 		}
 	}
+	slog.Debug("Root token and unseal key shards obtained.")
 
 	// Validate input for Tokens
 	err = configInstance.validateTokens()
@@ -146,6 +157,7 @@ func (configInstance *MonitorConfig) MigrateSecretConfig(config *rest.Config) er
 		return err
 	}
 
+	slog.Debug("Migrating root token and unseal key shards complete.")
 	return nil
 }
 
