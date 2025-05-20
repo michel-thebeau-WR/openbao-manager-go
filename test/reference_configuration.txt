@@ -1,0 +1,83 @@
+# Reference configuration file
+
+# A map of OpenBao servers.
+# Under kubernetes this map is read from kubernetes.
+OpenbaoAddresses:
+
+  # The name of each map item is arbitrary. Under kubernetes the map
+  # name is the name of the pod in which the OpenBao server is running.
+  controller-0:
+
+    # The FQDN of the OpenBao server.
+    host: "Openbao"
+
+    # The port that the OpenBao server is listening on.
+    port: 8200
+
+# A map of token secrets. Only 'root_token' is supported.
+# This map can be populated using the baomon init command.
+Tokens:
+
+  # The only supported map name is 'root_token'
+  root_token:
+    duration: "0"
+    key: "s.xXCb9pmrE24SsPifPgePsh45"
+
+# A map of the unseal shards.  The information is from the response of
+# a successful call to /sys/init API endpoint.
+# This map can be populated using the baomon init command.
+# When running under kubernetes, the information for this map  is read
+# from kubernetes 'cluster-key-x' secrets
+UnsealKeyShards:
+
+  # The name of each map name is arbitrary. 
+  # the key/key_base64 pair is taken from /sys/init response.
+  cluster-key-0:
+    key:
+    key_base64:
+
+# The CA certificate used to validate the OpenBao servers' certificate
+CACert: "/workdir/OpenBaoCA/ca.crt"
+
+# ClientCert and 3gqClientKey pair are used for mTLS.  The OpenBao
+# server must be configured for mTLS, and trust the CA certificate of
+# the client. Specifying these has no effect if the OpenBao server is
+# not configured for mTLS.
+ClientCert: "/workdir/OpenBaoClientCert/tls.crt"
+ClientKey: "/workdir/OpenBaoClientCert/tls.key"
+
+# If specified then baomon will output log to the specified file.
+# Otherwise the log is output to stdout.
+logPath: "/workdir/openbao_monitor.log"
+
+# Valid log levels are: DEBUG, INFO, WARN, ERROR
+logLevel: "DEBUG"
+
+# The interval or sleep time the baomon 'run' command will apply 
+# between each cycle of monitoring the OpenBao servers
+WaitInterval: 5
+
+# The network/connection timeout - unclear effect
+Timeout: 0
+
+# Override the default server listening port. This value is used if
+# it is unspecified in the OpenbaoAddresses map
+DefaultPort: 8200
+
+# When running under kubernetes, the namespace in which to find secrets
+# and server pods
+Namespace: "openbao"
+
+# When running under kubernetes, the names of OpenBao server pods begin
+# with this prefix.  Used to find the server pods.
+PodPrefix: "stx-openbao"
+
+# When running under kubernetes, the kubernetes pod domain suffix for
+# addressing OpenBao server pods. It is unlikely to be anything other
+# than 'pod.cluster.local'
+PodAddressSuffix: "pod.cluster.local"
+
+# When running under kubernetes, the prefix for secrets containing the
+# cluster keys (the response of API /sys/init)
+SecretPrefix: "cluster-key"
+
