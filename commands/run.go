@@ -33,7 +33,7 @@ attempt to unseal.`,
 		if useK8sConfig {
 			k8sconfig, err = getK8sConfig()
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 
@@ -43,10 +43,11 @@ attempt to unseal.`,
 			if useK8sConfig {
 				err := globalConfig.MigratePodConfig(k8sconfig)
 				if err != nil {
-					return nil
+					return err
 				}
 			}
 
+			slog.Debug("Creating api clients for each openbao addresses..")
 			clientMap := make(map[string]*openbao.Client, len(globalConfig.OpenbaoAddresses))
 			for host := range maps.Keys(globalConfig.OpenbaoAddresses) {
 				slog.Debug(fmt.Sprintf("Creating client for host %v", host))

@@ -177,6 +177,7 @@ func (configInstance MonitorConfig) WriteYAMLMonitorConfig(out io.Writer) error 
 
 // Create a new openbao config based on the monitor config
 func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.Config, error) {
+	slog.Debug(fmt.Sprintf("Setting up api access config for host %v", dnshost))
 	defConfig := openbao.DefaultConfig()
 
 	// Check if DefaultConfig has issues
@@ -220,6 +221,7 @@ func (configInstance MonitorConfig) NewOpenbaoConfig(dnshost string) (*openbao.C
 		defConfig.Timeout = time.Duration(configInstance.Timeout) * time.Second
 	}
 
+	slog.Debug("Openbao api access config setup complete.")
 	// Config creation complete.
 	return defConfig, nil
 }
@@ -231,12 +233,13 @@ func (configInstance MonitorConfig) SetupClient(dnshost string) (*openbao.Client
 		return nil, fmt.Errorf("error in creating new config for openbao: %v", err)
 	}
 
-	slog.Debug("Creating Openbao client for API access")
+	slog.Debug("Creating Openbao client for API access...")
 	newClient, err := openbao.NewClient(newConfig)
 	if err != nil {
 		return nil, fmt.Errorf("error in creating new client for openbao: %v", err)
 	}
 
+	slog.Debug("Client setup complete.")
 	return newClient, nil
 }
 
@@ -246,6 +249,7 @@ func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce 
 
 	keyShardheader := strings.Join([]string{"key", "shard", dnshost}, "-")
 
+	slog.Debug("Parsing the root token...")
 	// Parse in the root token
 	if _, ok := configInstance.Tokens["root_token"]; ok {
 		return fmt.Errorf("an entry of the root token was already found")
@@ -258,6 +262,7 @@ func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce 
 		Key:      responce.RootToken,
 	}
 
+	slog.Debug("Parsing the unseal key shards...")
 	// Parse in the key shards for unseal
 	for i := range len(responce.Keys) {
 		keyShardName := strings.Join([]string{keyShardheader, strconv.Itoa(i)}, "-")
@@ -273,6 +278,7 @@ func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce 
 		}
 	}
 
+	slog.Debug("Parsing the recovery key shards...")
 	// Parse in the recovery key shards
 	for i := range len(responce.RecoveryKeys) {
 		keyShardName := strings.Join([]string{keyShardheader, "recovery", strconv.Itoa(i)}, "-")
@@ -288,5 +294,6 @@ func (configInstance *MonitorConfig) ParseInitResponse(dnshost string, responce 
 		}
 	}
 
+	slog.Debug("Parsing init response complete")
 	return nil
 }

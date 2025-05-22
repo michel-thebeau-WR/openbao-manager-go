@@ -10,23 +10,25 @@ import (
 )
 
 func checkHealth(dnshost string, client *openbao.Client) (*openbao.HealthResponse, error) {
-	slog.Info(fmt.Sprintf("Attempting to check openbao health on host %v", dnshost))
+	slog.Debug(fmt.Sprintf("Attempting to check openbao health on host %v", dnshost))
 	healthResult, err := client.Sys().Health()
 	if err != nil {
 		return nil, fmt.Errorf("error during call to openbao check health: %v", err)
 	}
 
-	slog.Info("health check complete")
+	slog.Debug("health check complete")
 	return healthResult, nil
 }
 
 var healthCmd = &cobra.Command{
-	Use:   "health DNSHost",
-	Short: "Check openbao health",
-	Long:  "Check the health status of the openbao server on the specified host",
-	Args:  cobra.ExactArgs(1),
+	Use:                "health DNSHost",
+	Short:              "Check openbao health",
+	Long:               "Check the health status of the openbao server on the specified host",
+	Args:               cobra.ExactArgs(1),
+	PersistentPreRunE:  setupCmd,
+	PersistentPostRunE: cleanCmd,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		slog.Debug("Action: health")
+		slog.Debug(fmt.Sprintf("Action: Health %v", args[0]))
 
 		cmd.SilenceUsage = true
 		newClient, err := globalConfig.SetupClient(args[0])
@@ -37,19 +39,16 @@ var healthCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("openbao health failed with error: %v", err)
 		}
-
-		slog.Info("Health check command successful")
 		healthPrint, err := json.MarshalIndent(healthResult, "", "  ")
 		if err != nil {
 			return fmt.Errorf("unable to marshal health check result: %v", err)
 		}
+		slog.Info(fmt.Sprintf("Health check command successful for host %v", args[0]))
 		fmt.Print("Health check successful. Result:\n")
 		fmt.Print(string(healthPrint))
 
 		return nil
 	},
-	PersistentPreRunE:  setupCmd,
-	PersistentPostRunE: cleanCmd,
 }
 
 func init() {
